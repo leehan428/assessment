@@ -1,0 +1,893 @@
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1학년 1반 수행평가 일정 관리</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        @keyframes urgentPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        }
+        .animate-urgent {
+            animation: urgentPulse 2s infinite;
+        }
+        .modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white pb-16 sm:pb-0">
+
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                    <i class="fa-solid fa-graduation-cap text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg font-bold text-slate-800 leading-tight">1학년 1반 수행평가</h1>
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">직접 추가 가능</span>
+                    </div>
+                    <p class="text-xs text-slate-500 font-medium">우리 학급 수행평가 일정 & 미제출자 관리</p>
+                </div>
+            </div>
+
+            <!-- Header Action Buttons -->
+            <div class="flex items-center space-x-2">
+                <button onclick="openFormModal()" class="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition shadow-sm shadow-sky-500/30 flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus text-sm"></i>
+                    <span>수행평가 직접 추가</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- Dashboard Banner -->
+        <section class="bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 rounded-3xl p-6 sm:p-7 text-white shadow-xl shadow-sky-500/10 relative overflow-hidden">
+            <div class="absolute -right-8 -bottom-10 opacity-15 text-white pointer-events-none">
+                <i class="fa-solid fa-book-open text-9xl"></i>
+            </div>
+            
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div class="space-y-1.5">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold text-white">
+                        <i class="fa-regular fa-calendar-check"></i>
+                        <span id="todayDateText">오늘 날짜 계산 중...</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" id="bannerTitle">
+                        📚 남은 수행평가 <span class="text-yellow-300 font-black" id="remainingCount">0</span>개
+                    </h2>
+                    <p class="text-sky-100 text-xs sm:text-sm font-medium" id="closestNotice">
+                        가장 가까운 수행평가: <span class="font-bold underline decoration-yellow-300 underline-offset-4" id="closestText">-</span>
+                    </p>
+                </div>
+
+                <!-- Stats Badges & Direct Add Banner Button -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-3 bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15">
+                        <div class="text-center px-3 border-r border-white/20">
+                            <span class="block text-[11px] text-sky-100 font-medium">임박 (D-3)</span>
+                            <span class="text-xl font-extrabold text-yellow-300" id="statUrgent">0</span>
+                        </div>
+                        <div class="text-center px-3 border-r border-white/20">
+                            <span class="block text-[11px] text-sky-100 font-medium">진행 예정</span>
+                            <span class="text-xl font-extrabold text-white" id="statUpcoming">0</span>
+                        </div>
+                        <div class="text-center px-3">
+                            <span class="block text-[11px] text-sky-100 font-medium">마감 완료</span>
+                            <span class="text-xl font-extrabold text-slate-200" id="statPast">0</span>
+                        </div>
+                    </div>
+
+                    <button onclick="openFormModal()" class="w-full sm:w-auto px-4 py-3 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-slate-900 text-xs font-extrabold transition shadow-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-plus text-base"></i>
+                        <span>새 수행평가 바로 작성하기</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3.5">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <!-- Search Box -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="renderEvaluations()" placeholder="수행평가 이름, 과목, 미제출자 이름 검색..." 
+                           class="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition placeholder:text-slate-400">
+                </div>
+
+                <!-- Status Filter Tabs -->
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold self-start md:self-auto">
+                    <button onclick="setStatusFilter('all')" id="statusFilter-all" class="px-3 py-1.5 rounded-lg transition bg-white text-slate-800 shadow-sm">전체</button>
+                    <button onclick="setStatusFilter('upcoming')" id="statusFilter-upcoming" class="px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900">진행 중</button>
+                    <button onclick="setStatusFilter('past')" id="statusFilter-past" class="px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900">마감 완료</button>
+                </div>
+            </div>
+
+            <!-- Subject Pills Bar -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar" id="subjectPills">
+                <!-- Dynamically generated subject pills -->
+            </div>
+        </section>
+
+        <section id="evaluationContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Dynamic Content populated via JavaScript -->
+        </section>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 p-8 space-y-3">
+            <div class="w-16 h-16 mx-auto rounded-full bg-sky-50 flex items-center justify-center text-sky-500 text-2xl">
+                <i class="fa-solid fa-file-circle-plus"></i>
+            </div>
+            <h3 class="text-slate-800 font-bold text-base">등록된 수행평가가 없거나 조건에 맞는 결과가 없습니다.</h3>
+            <p class="text-xs text-slate-400 max-w-sm mx-auto">새로운 수행평가 일정이 있으신가요? 아래 버튼을 눌러 직접 손쉽게 추가해 보세요!</p>
+            <button onclick="openFormModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition shadow-sm">
+                <i class="fa-solid fa-plus"></i>
+                <span>수행평가 직접 등록하기</span>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Floating Add Button for Mobile -->
+    <button onclick="openFormModal()" class="sm:hidden fixed right-5 bottom-5 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white shadow-xl shadow-sky-500/40 flex items-center justify-center text-xl hover:scale-105 active:scale-95 transition">
+        <i class="fa-solid fa-plus"></i>
+    </button>
+
+    <!-- Notice Viewer Modal -->
+    <div id="noticeModal" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center space-x-2.5">
+                    <span id="noticeModalSubject" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-100 text-sky-700">국어</span>
+                    <h3 id="noticeModalTitle" class="text-base font-bold text-slate-800">수행평가 안내장</h3>
+                </div>
+                <button onclick="closeNoticeModal()" class="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="p-6 overflow-y-auto space-y-4">
+                <!-- Info Summary -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs">
+                    <div>
+                        <span class="text-slate-400 block font-medium">제출/평가일</span>
+                        <span id="noticeModalDate" class="font-bold text-slate-700">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block font-medium">배점</span>
+                        <span id="noticeModalScore" class="font-bold text-sky-600">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block font-medium">D-Day</span>
+                        <span id="noticeModalDday" class="font-bold text-rose-500">-</span>
+                    </div>
+                </div>
+
+                <!-- Unsubmitted Students Alert Box -->
+                <div id="noticeModalMissingBox" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2 text-amber-800 font-bold text-xs">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                            <span>미제출자 / 미응시자 명단 (<span id="noticeModalMissingCount">0</span>명)</span>
+                        </div>
+                        <span class="text-[10px] text-amber-600 font-medium">* 제출 후 명단에서 제외할 수 있습니다.</span>
+                    </div>
+                    <div id="noticeModalMissingList" class="flex flex-wrap gap-1.5 pt-1">
+                        <!-- Dynamic list badges -->
+                    </div>
+                </div>
+
+                <!-- Description / Criteria -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">평가 세부 내용 & 준비물</h4>
+                    <div id="noticeModalDesc" class="text-sm text-slate-700 bg-white p-3.5 rounded-xl border border-slate-200 leading-relaxed whitespace-pre-line">
+                        안내 사항이 입력되어 있지 않습니다.
+                    </div>
+                </div>
+
+                <!-- Attached File Preview Container -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">등록된 안내장 문서/이미지</h4>
+                    <div id="noticeFileContainer" class="rounded-2xl border border-slate-200 overflow-hidden bg-slate-100 min-h-[180px] flex items-center justify-center">
+                        <!-- Image or Empty prompt will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <button id="noticeModalEditBtn" onclick="" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    <span>내용 수정</span>
+                </button>
+                <button onclick="closeNoticeModal()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direct Add / Edit Form Modal -->
+    <div id="formModal" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Form Header -->
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-pen-nib"></i>
+                    </div>
+                    <h3 id="formModalTitle" class="text-base font-bold text-slate-800">수행평가 직접 추가하기</h3>
+                </div>
+                <button onclick="closeFormModal()" class="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Form Content -->
+            <form id="evalForm" onsubmit="saveEvaluation(event)" class="p-6 overflow-y-auto space-y-4">
+                <input type="hidden" id="editId">
+
+                <!-- Subject Select & Score Input -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">과목 선택 <span class="text-rose-500">*</span></label>
+                        <select id="formSubject" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white">
+                            <option value="국어">국어</option>
+                            <option value="수학">수학</option>
+                            <option value="영어">영어</option>
+                            <option value="통합사회">통합사회</option>
+                            <option value="통합과학">통합과학</option>
+                            <option value="과학탐구실험">과학탐구실험</option>
+                            <option value="체육">체육</option>
+                            <option value="진로와직업">진로와직업</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-slate-700">배점 (점수)</label>
+                            <label class="text-[11px] text-slate-500 flex items-center gap-1 cursor-pointer">
+                                <input type="checkbox" id="formScoreUndefined" onchange="toggleScoreInput(this)" class="rounded text-sky-600 focus:ring-0">
+                                <span>미정</span>
+                            </label>
+                        </div>
+                        <input type="number" id="formScore" min="0" max="100" placeholder="예: 20" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">수행평가 이름 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="formTitle" required placeholder="예: 현대 소설 독서 논술문 작성하기" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+
+                <!-- Date -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">수행평가 제출/평가 날짜 <span class="text-rose-500">*</span></label>
+                    <input type="date" id="formDate" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+
+                <!-- Unsubmitted Students List -->
+                <div>
+                    <label class="block text-xs font-bold text-amber-700 mb-1 flex items-center gap-1">
+                        <i class="fa-solid fa-user-minus text-amber-500"></i>
+                        <span>미제출자 / 미응시자 명단</span>
+                    </label>
+                    <textarea id="formUnsubmitted" rows="2" placeholder="예: 03번 김철수, 12번 이영희 (쉼표 또는 줄바꿈으로 입력)" class="w-full px-3 py-2 text-sm rounded-xl border border-amber-200 bg-amber-50/30 focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none placeholder:text-slate-400 text-slate-700"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">* 아직 수행평가를 제출하지 않은 학생 이름을 적어두면 목록에 강조 표시됩니다.</p>
+                </div>
+
+                <!-- Notice File Upload Simulation -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">안내장 이미지 첨부 (선택)</label>
+                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center bg-slate-50 hover:bg-slate-100/80 transition relative cursor-pointer">
+                        <input type="file" id="formFileInput" accept="image/*" onchange="handleFileSelect(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <div id="fileUploadPrompt" class="space-y-1">
+                            <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-2xl"></i>
+                            <p class="text-xs font-semibold text-slate-600">안내장 사진 또는 이미지 파일 클릭하여 첨부</p>
+                            <p class="text-[10px] text-slate-400">JPG, PNG, GIF 파일 지원</p>
+                        </div>
+                        <!-- Preview Thumbnail -->
+                        <div id="filePreviewContainer" class="hidden flex items-center justify-center gap-3">
+                            <img id="filePreviewImg" src="" class="h-20 max-w-full rounded-lg object-contain border border-slate-200">
+                            <button type="button" onclick="clearSelectedFile(event)" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold hover:bg-rose-100">삭제</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Extra Description -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">추가 설명 및 준비물</label>
+                    <textarea id="formDesc" rows="3" placeholder="준비물, 채점 세부 기준, 모둠 정보 등 안내할 내용을 작성하세요." class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none resize-none"></textarea>
+                </div>
+
+                <!-- Buttons -->
+                <div class="pt-2 flex items-center justify-end space-x-2">
+                    <button type="button" onclick="closeFormModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition">취소</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i>
+                        <span>저장하기</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Subject color badge mappings for 1st grade curriculum
+        const SUBJECT_COLORS = {
+            '국어': { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200', pill: 'bg-rose-500' },
+            '수학': { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', pill: 'bg-blue-500' },
+            '영어': { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', pill: 'bg-purple-500' },
+            '통합사회': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', pill: 'bg-amber-500' },
+            '통합과학': { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', pill: 'bg-emerald-500' },
+            '과학탐구실험': { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', pill: 'bg-teal-500' },
+            '체육': { bg: 'bg-lime-50', text: 'text-lime-600', border: 'border-lime-200', pill: 'bg-lime-500' },
+            '진로와직업': { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', pill: 'bg-indigo-500' },
+            '기타': { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', pill: 'bg-slate-500' },
+        };
+
+        // Default initial data for 1st Grade Class 1
+        const INITIAL_EVALUATIONS = [
+            {
+                id: 'eval-1',
+                subject: '국어',
+                title: '현대 소설 독서 논술문 작성하기',
+                date: '2026-10-08',
+                score: '20',
+                unsubmitted: '04번 김철수, 12번 박민수',
+                desc: '학교 도서관에서 지정 도서를 읽고 인물의 선택에 대한 찬반 논술문을 작성합니다.\n- 분량: 800자 내외\n- 준비물: 필기도구',
+                noticeFile: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80'
+            },
+            {
+                id: 'eval-2',
+                subject: '과학탐구실험',
+                title: '산화 환원 반응 화학 실험 보고서',
+                date: '2026-10-15',
+                score: '30',
+                unsubmitted: '07번 이영희',
+                desc: '실험실 안전 수칙 준수 필수! 실험 후 결과 분석 및 지질 반응 결과를 탐구 보고서 형태로 제출하세요.',
+                noticeFile: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=800&q=80'
+            },
+            {
+                id: 'eval-3',
+                subject: '영어',
+                title: '자신의 꿈 발표하기 (1분 Speech)',
+                date: '2026-10-04',
+                score: '15',
+                unsubmitted: '15번 정지훈, 22번 최수현',
+                desc: 'PPT 2장 이내 또는 시각 자료를 활용하여 영어로 1분간 발표합니다. 발음, 전달력, 원고 구성 평가.',
+                noticeFile: ''
+            },
+            {
+                id: 'eval-4',
+                subject: '통합사회',
+                title: '기후 변화에 따른 인권 침해 사례 조사',
+                date: '2026-10-22',
+                score: '20',
+                unsubmitted: '',
+                desc: '모둠별 탐구 보고서 및 카드뉴스 제작 평가.',
+                noticeFile: ''
+            }
+        ];
+
+        // Global State
+        let evaluations = [];
+        let activeSubject = '전체';
+        let activeStatus = 'all';
+        let selectedFileBase64 = '';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadEvaluations();
+            renderSubjectFilterPills();
+            renderEvaluations();
+            updateTodayHeader();
+        });
+
+        function getTodayString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function updateTodayHeader() {
+            const now = new Date();
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const formatted = `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()} (${days[now.getDay()]}) 기준`;
+            document.getElementById('todayDateText').textContent = formatted;
+        }
+
+        function calculateDDay(targetDateStr) {
+            const today = new Date(getTodayString());
+            const target = new Date(targetDateStr);
+            const diffTime = target - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) return { text: 'D-Day', days: 0, status: 'today' };
+            if (diffDays > 0) return { text: `D-${diffDays}`, days: diffDays, status: 'upcoming' };
+            return { text: `마감 (D+${Math.abs(diffDays)})`, days: diffDays, status: 'past' };
+        }
+
+        function parseUnsubmittedList(text) {
+            if (!text || !text.trim()) return [];
+            return text
+                .split(/[\n,]/)
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+        }
+
+        function loadEvaluations() {
+            const stored = localStorage.getItem('class_evaluations_1_1_v3');
+            if (stored) {
+                try {
+                    evaluations = JSON.parse(stored);
+                } catch (e) {
+                    evaluations = [...INITIAL_EVALUATIONS];
+                }
+            } else {
+                evaluations = [...INITIAL_EVALUATIONS];
+                saveToLocalStorage();
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('class_evaluations_1_1_v3', JSON.stringify(evaluations));
+        }
+
+        function setStatusFilter(status) {
+            activeStatus = status;
+            ['all', 'upcoming', 'past'].forEach(s => {
+                const btn = document.getElementById(`statusFilter-${s}`);
+                if (s === status) {
+                    btn.className = 'px-3 py-1.5 rounded-lg transition bg-white text-slate-800 shadow-sm font-bold';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900 font-medium';
+                }
+            });
+            renderEvaluations();
+        }
+
+        function setSubjectFilter(subj) {
+            activeSubject = subj;
+            renderSubjectFilterPills();
+            renderEvaluations();
+        }
+
+        function renderSubjectFilterPills() {
+            const container = document.getElementById('subjectPills');
+            const subjects = ['전체', '국어', '수학', '영어', '통합사회', '통합과학', '과학탐구실험', '체육', '진로와직업'];
+            
+            container.innerHTML = subjects.map(subj => {
+                const isActive = activeSubject === subj;
+                const activeClass = isActive 
+                    ? 'bg-slate-800 text-white font-bold shadow-xs' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium';
+                return `<button onclick="setSubjectFilter('${subj}')" class="px-3 py-1 rounded-full whitespace-nowrap transition ${activeClass}">${subj}</button>`;
+            }).join('');
+        }
+
+        function renderEvaluations() {
+            const searchKeyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            const container = document.getElementById('evaluationContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            let sorted = [...evaluations].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            let filtered = sorted.filter(item => {
+                const dDay = calculateDDay(item.date);
+                
+                if (activeStatus === 'upcoming' && dDay.days < 0) return false;
+                if (activeStatus === 'past' && dDay.days >= 0) return false;
+                if (activeSubject !== '전체' && item.subject !== activeSubject) return false;
+
+                if (searchKeyword) {
+                    const matchTitle = item.title.toLowerCase().includes(searchKeyword);
+                    const matchSubject = item.subject.toLowerCase().includes(searchKeyword);
+                    const matchUnsubmitted = (item.unsubmitted || '').toLowerCase().includes(searchKeyword);
+                    if (!matchTitle && !matchSubject && !matchUnsubmitted) return false;
+                }
+
+                return true;
+            });
+
+            updateBannerStats();
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            container.innerHTML = filtered.map(item => {
+                const dDay = calculateDDay(item.date);
+                const isPast = dDay.days < 0;
+                const isUrgent = dDay.days >= 0 && dDay.days <= 3;
+                
+                const styleConfig = SUBJECT_COLORS[item.subject] || SUBJECT_COLORS['기타'];
+                
+                const dateObj = new Date(item.date);
+                const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+                const formattedDate = `${item.date} (${daysOfWeek[dateObj.getDay()]})`;
+
+                const scoreDisplay = item.score ? `${item.score}점` : '배점 미정';
+                const unsubmittedList = parseUnsubmittedList(item.unsubmitted);
+                const hasUnsubmitted = unsubmittedList.length > 0;
+
+                let dDayBadgeClass = 'bg-sky-50 text-sky-600 border-sky-200';
+                if (isPast) {
+                    dDayBadgeClass = 'bg-slate-100 text-slate-400 border-slate-200';
+                } else if (isUrgent) {
+                    dDayBadgeClass = 'bg-rose-500 text-white border-rose-500 animate-urgent font-black';
+                } else if (dDay.days === 0) {
+                    dDayBadgeClass = 'bg-amber-500 text-white border-amber-500 font-extrabold';
+                }
+
+                return `
+                    <div class="bg-white rounded-2xl p-5 border ${isPast ? 'border-slate-200/60 opacity-75 bg-slate-50/50' : isUrgent ? 'border-rose-200 ring-2 ring-rose-500/10' : 'border-slate-200/80'} shadow-sm hover:shadow-md transition flex flex-col justify-between relative group">
+                        
+                        <div>
+                            <!-- Header Info -->
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-bold border ${styleConfig.bg} ${styleConfig.text} ${styleConfig.border}">
+                                    ${item.subject}
+                                </span>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${dDayBadgeClass}">
+                                    ${dDay.text}
+                                </span>
+                            </div>
+
+                            <!-- Title -->
+                            <h3 class="text-base font-bold ${isPast ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-800'} mb-2 leading-snug">
+                                ${escapeHtml(item.title)}
+                            </h3>
+
+                            <!-- Details list -->
+                            <div class="space-y-1.5 text-xs text-slate-500 mb-3">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-regular fa-calendar text-slate-400 w-4"></i>
+                                    <span class="font-medium text-slate-700">${formattedDate}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-award text-slate-400 w-4"></i>
+                                    <span class="font-semibold ${item.score ? 'text-sky-600' : 'text-slate-400'}">${scoreDisplay}</span>
+                                </div>
+                            </div>
+
+                            <!-- Unsubmitted Badge inside Card -->
+                            ${hasUnsubmitted ? `
+                                <div class="mb-3 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs">
+                                    <div class="flex items-center justify-between text-amber-800 font-bold mb-1">
+                                        <span class="flex items-center gap-1.5">
+                                            <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs"></i>
+                                            <span>미제출자 (${unsubmittedList.length}명)</span>
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-amber-700 font-medium truncate">
+                                        ${escapeHtml(unsubmittedList.join(', '))}
+                                    </p>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Card Actions -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <button onclick="openNoticeModal('${item.id}')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5">
+                                <i class="fa-regular fa-file-lines text-sky-600"></i>
+                                <span>안내장 보기</span>
+                            </button>
+
+                            <div class="flex items-center space-x-1">
+                                <button onclick="openFormModal('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition" title="수정">
+                                    <i class="fa-regular fa-pen-to-square text-sm"></i>
+                                </button>
+                                <button onclick="deleteEvaluation('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="삭제">
+                                    <i class="fa-regular fa-trash-can text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateBannerStats() {
+            const upcoming = evaluations.filter(e => calculateDDay(e.date).days >= 0);
+            const urgentCount = evaluations.filter(e => {
+                const days = calculateDDay(e.date).days;
+                return days >= 0 && days <= 3;
+            }).length;
+            const pastCount = evaluations.filter(e => calculateDDay(e.date).days < 0).length;
+
+            document.getElementById('remainingCount').textContent = upcoming.length;
+            document.getElementById('statUrgent').textContent = urgentCount;
+            document.getElementById('statUpcoming').textContent = upcoming.length;
+            document.getElementById('statPast').textContent = pastCount;
+
+            if (upcoming.length > 0) {
+                const closest = [...upcoming].sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+                const dDay = calculateDDay(closest.date);
+                document.getElementById('closestText').textContent = `[${closest.subject}] ${closest.title} (${dDay.text})`;
+            } else {
+                document.getElementById('closestText').textContent = '예정된 수행평가가 없습니다 🎉';
+            }
+        }
+
+        function openNoticeModal(id) {
+            const item = evaluations.find(e => e.id === id);
+            if (!item) return;
+
+            const dDay = calculateDDay(item.date);
+            const styleConfig = SUBJECT_COLORS[item.subject] || SUBJECT_COLORS['기타'];
+
+            document.getElementById('noticeModalSubject').textContent = item.subject;
+            document.getElementById('noticeModalSubject').className = `px-2.5 py-1 rounded-lg text-xs font-bold ${styleConfig.bg} ${styleConfig.text}`;
+            document.getElementById('noticeModalTitle').textContent = item.title;
+            
+            const dateObj = new Date(item.date);
+            const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+            document.getElementById('noticeModalDate').textContent = `${item.date} (${daysOfWeek[dateObj.getDay()]})`;
+            document.getElementById('noticeModalScore').textContent = item.score ? `${item.score}점` : '배점 미정';
+            document.getElementById('noticeModalDday').textContent = dDay.text;
+
+            document.getElementById('noticeModalDesc').textContent = item.desc || '등록된 세부 설명이 없습니다.';
+            document.getElementById('noticeModalEditBtn').onclick = () => {
+                closeNoticeModal();
+                openFormModal(item.id);
+            };
+
+            const missingBox = document.getElementById('noticeModalMissingBox');
+            const missingListContainer = document.getElementById('noticeModalMissingList');
+            const unsubmittedList = parseUnsubmittedList(item.unsubmitted);
+
+            if (unsubmittedList.length > 0) {
+                document.getElementById('noticeModalMissingCount').textContent = unsubmittedList.length;
+                missingListContainer.innerHTML = unsubmittedList.map(name => `
+                    <span class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs">
+                        ${escapeHtml(name)}
+                    </span>
+                `).join('');
+                missingBox.classList.remove('hidden');
+            } else {
+                missingBox.classList.add('hidden');
+            }
+
+            const fileContainer = document.getElementById('noticeFileContainer');
+            if (item.noticeFile) {
+                fileContainer.innerHTML = `
+                    <a href="${item.noticeFile}" target="_blank" title="원본 크기 보기" class="block w-full text-center p-2 group relative">
+                        <img src="${item.noticeFile}" alt="안내장 이미지" class="max-h-[350px] mx-auto rounded-xl object-contain shadow-sm group-hover:opacity-95 transition">
+                        <span class="absolute bottom-4 right-4 bg-slate-900/80 text-white text-[10px] px-2.5 py-1 rounded-full backdrop-blur-md">
+                            <i class="fa-solid fa-up-right-from-square mr-1"></i> 크게 보기
+                        </span>
+                    </a>
+                `;
+            } else {
+                fileContainer.innerHTML = `
+                    <div class="p-8 text-center text-slate-400">
+                        <i class="fa-regular fa-file-excel text-3xl mb-2 block"></i>
+                        <p class="text-xs font-medium">안내장이 아직 등록되지 않았습니다.</p>
+                    </div>
+                `;
+            }
+
+            document.getElementById('noticeModal').classList.remove('hidden');
+        }
+
+        function closeNoticeModal() {
+            document.getElementById('noticeModal').classList.add('hidden');
+        }
+
+        // Form Modal Operations for Direct Addition
+        function openFormModal(id = null) {
+            const modal = document.getElementById('formModal');
+            const form = document.getElementById('evalForm');
+            form.reset();
+            selectedFileBase64 = '';
+            clearSelectedFile();
+
+            const scoreInput = document.getElementById('formScore');
+            const scoreCheckbox = document.getElementById('formScoreUndefined');
+            scoreInput.disabled = false;
+            scoreCheckbox.checked = false;
+
+            if (id) {
+                const item = evaluations.find(e => e.id === id);
+                if (item) {
+                    document.getElementById('formModalTitle').textContent = '수행평가 내용 수정';
+                    document.getElementById('editId').value = item.id;
+                    document.getElementById('formSubject').value = item.subject;
+                    document.getElementById('formTitle').value = item.title;
+                    document.getElementById('formDate').value = item.date;
+                    
+                    if (item.score) {
+                        scoreInput.value = item.score;
+                    } else {
+                        scoreCheckbox.checked = true;
+                        scoreInput.value = '';
+                        scoreInput.disabled = true;
+                    }
+
+                    document.getElementById('formUnsubmitted').value = item.unsubmitted || '';
+                    document.getElementById('formDesc').value = item.desc || '';
+
+                    if (item.noticeFile) {
+                        selectedFileBase64 = item.noticeFile;
+                        showFilePreview(item.noticeFile);
+                    }
+                }
+            } else {
+                document.getElementById('formModalTitle').textContent = '수행평가 직접 추가하기';
+                document.getElementById('editId').value = '';
+                document.getElementById('formDate').value = getTodayString();
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeFormModal() {
+            document.getElementById('formModal').classList.add('hidden');
+        }
+
+        function toggleScoreInput(checkbox) {
+            const scoreInput = document.getElementById('formScore');
+            if (checkbox.checked) {
+                scoreInput.value = '';
+                scoreInput.disabled = true;
+            } else {
+                scoreInput.disabled = false;
+            }
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedFileBase64 = e.target.result;
+                    showFilePreview(selectedFileBase64);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function showFilePreview(src) {
+            document.getElementById('fileUploadPrompt').classList.add('hidden');
+            const previewContainer = document.getElementById('filePreviewContainer');
+            const previewImg = document.getElementById('filePreviewImg');
+            previewImg.src = src;
+            previewContainer.classList.remove('hidden');
+        }
+
+        function clearSelectedFile(e) {
+            if (e) e.stopPropagation();
+            selectedFileBase64 = '';
+            document.getElementById('formFileInput').value = '';
+            document.getElementById('fileUploadPrompt').classList.remove('hidden');
+            document.getElementById('filePreviewContainer').classList.add('hidden');
+        }
+
+        function saveEvaluation(event) {
+            event.preventDefault();
+
+            const editId = document.getElementById('editId').value;
+            const subject = document.getElementById('formSubject').value;
+            const title = document.getElementById('formTitle').value.trim();
+            const date = document.getElementById('formDate').value;
+            const isUndefinedScore = document.getElementById('formScoreUndefined').checked;
+            const score = isUndefinedScore ? '' : document.getElementById('formScore').value.trim();
+            const unsubmitted = document.getElementById('formUnsubmitted').value.trim();
+            const desc = document.getElementById('formDesc').value.trim();
+
+            if (!title || !date) return;
+
+            if (editId) {
+                const index = evaluations.findIndex(e => e.id === editId);
+                if (index !== -1) {
+                    evaluations[index] = {
+                        ...evaluations[index],
+                        subject,
+                        title,
+                        date,
+                        score,
+                        unsubmitted,
+                        desc,
+                        noticeFile: selectedFileBase64 || evaluations[index].noticeFile
+                    };
+                }
+            } else {
+                const newItem = {
+                    id: 'eval-' + Date.now(),
+                    subject,
+                    title,
+                    date,
+                    score,
+                    unsubmitted,
+                    desc,
+                    noticeFile: selectedFileBase64
+                };
+                evaluations.push(newItem);
+            }
+
+            saveToLocalStorage();
+            renderEvaluations();
+            closeFormModal();
+        }
+
+        function deleteEvaluation(id) {
+            if (confirm('이 수행평가를 정말 삭제하시겠습니까?')) {
+                evaluations = evaluations.filter(e => e.id !== id);
+                saveToLocalStorage();
+                renderEvaluations();
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
+```
